@@ -17,5 +17,6 @@ public class Service
     [PluginService] public static IGameGui GameGui { get; private set; } = null!;
     [PluginService] public static IFramework Framework { get; private set; } = null!;
     [PluginService] public static IDataManager DataManager { get; private set; } = null!;
+    [PluginService] public static ICondition Condition { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 }

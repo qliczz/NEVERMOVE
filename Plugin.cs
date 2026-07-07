@@ -53,7 +53,11 @@ public sealed class Plugin : IDalamudPlugin
         Service.Log.Information("[NEVERMOVE] 已加载");
     }
 
-    private void FrameworkOnUpdate(IFramework framework) => this.targetTracker.Update();
+    private void FrameworkOnUpdate(IFramework framework)
+    {
+        this.targetTracker.Update();
+        this.targetTracker.ApplyOutlines();
+    }
 
     private void OnDraw()
     {

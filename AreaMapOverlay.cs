@@ -3,6 +3,7 @@ using System.Numerics;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Dalamud.Bindings.ImGui;
 
@@ -58,6 +59,7 @@ public sealed class AreaMapOverlay
     /// <summary>像素级对齐绘制（实验性）。成功返回 true，任何前置条件不满足返回 false。</summary>
     private unsafe bool DrawPixelPerfect(AtkUnitBase* addon, IPlayerCharacter local)
     {
+        var am = (Atk2DAreaMap*)addon;
         var root = addon->RootNode;
         if (root == null) return false;
 
@@ -81,6 +83,13 @@ public sealed class AreaMapOverlay
         var fx = this.config.AreaMapFlipX ? -1f : 1f;
         var fy = this.config.AreaMapFlipY ? -1f : 1f;
 
+        // 当前大地图缩放倍率（Atk2DAreaMap.MapScale）。缩放后落点必须按此倍率放大，
+        // 否则圆点不会随地图缩放移动而失准。
+        var mapScale = Math.Max(0.01f, am->MapScale);
+
+        // 以玩家地图坐标为视图中心，用「相对偏移 × 缩放」投影，保证缩放/平移时与地图一致。
+        var playerMc = MapUtil.GetMapCoordinates(local, false);
+
         var draw = ImGui.GetForegroundDrawList();
 
         foreach (var obj in Service.ObjectTable)
@@ -91,8 +100,8 @@ public sealed class AreaMapOverlay
 
             // 归一化地图坐标：X 东/西，Y 北/南
             var mc = MapUtil.GetMapCoordinates(pc, false);
-            var sx = cx + (mc.X * halfW * sf * fx);
-            var sy = cy - (mc.Y * halfH * sf * fy); // 北在上 => 屏幕 Y 取负
+            var sx = cx + ((mc.X - playerMc.X) * halfW * mapScale * sf * fx);
+            var sy = cy - ((mc.Y - playerMc.Y) * halfH * mapScale * sf * fy); // 北在上 => 屏幕 Y 取负
 
             var color = WorldOverlay.ToAbgr(this.ColorFor(kind));
             draw.AddCircleFilled(new Vector2(sx, sy), this.config.AreaMapDotRadius, color);

@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 
 namespace NEVERMOVE;
 
@@ -29,6 +33,7 @@ public sealed class TargetTracker : IDisposable
 
     private readonly Configuration config;
     private readonly ConcurrentDictionary<ulong, TargetKind> targets = new();
+    private readonly Dictionary<ulong, byte> appliedOutlines = new();
     private DateTime lastScan = DateTime.MinValue;
     private string? localFcTag;
     private ulong localObjectId;
@@ -53,6 +58,13 @@ public sealed class TargetTracker : IDisposable
             this.localObjectId = local.GameObjectId;
             var localChar = (Character*)local.Address;
             this.localFcTag = localChar->FreeCompanyTagString;
+
+            // 区域限制：仅大世界启用；副本/地牢/绝境战/团队(BoundByDuty) 或 危命任务(FateId!=0) 时清空高亮目标
+            if (this.config.OnlyOpenWorld && this.IsRestricted(local))
+            {
+                this.targets.Clear();
+                return;
+            }
 
             var fresh = new ConcurrentDictionary<ulong, TargetKind>();
             foreach (var obj in Service.ObjectTable)
@@ -102,5 +114,119 @@ public sealed class TargetTracker : IDisposable
         return null;
     }
 
-    public void Dispose() => this.targets.Clear();
+    /// <summary>是否处于应禁用的场景：副本/地牢/绝境战/团队（BoundByDuty）或 危命任务（FateId!=0）。</summary>
+    private unsafe bool IsRestricted(IPlayerCharacter local)
+    {
+        try
+        {
+            if (Service.Condition[ConditionFlag.BoundByDuty]) return true;
+        }
+        catch
+        {
+            // Condition 不可用时不视为限制
+        }
+
+        try
+        {
+            if (((GameObject*)local.Address)->FateId != 0) return true;
+        }
+        catch
+        {
+            // 读取失败不视为限制
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 每帧调用：对被高亮目标施加游戏原生「选中目标」轮廓光效（Highlight）。
+    /// 仅在状态/颜色变化时调用对应对象，避免每帧重触发闪烁；不再满足条件的对象清除描边。
+    /// 关闭或卸载时由 ClearApplied 全部清除。
+    /// </summary>
+    public unsafe void ApplyOutlines()
+    {
+        if (!this.config.EnableOutline)
+        {
+            this.ClearApplied();
+            return;
+        }
+
+        try
+        {
+            var local = Service.ObjectTable.LocalPlayer;
+            var localId = local?.GameObjectId ?? 0;
+            var present = new HashSet<ulong>();
+
+            foreach (var obj in Service.ObjectTable)
+            {
+                if (obj is not IPlayerCharacter pc) continue;
+                if (pc.GameObjectId == localId) continue;
+
+                if (this.Classify(pc, out var kind))
+                {
+                    var color = this.OutlineColorFor(kind);
+                    present.Add(pc.GameObjectId);
+                    if (!this.appliedOutlines.TryGetValue(pc.GameObjectId, out var cur) || cur != color)
+                    {
+                        ((GameObject*)pc.Address)->Highlight((ObjectHighlightColor)color);
+                        this.appliedOutlines[pc.GameObjectId] = color;
+                    }
+                }
+                else if (this.appliedOutlines.TryGetValue(pc.GameObjectId, out _))
+                {
+                    ((GameObject*)pc.Address)->Highlight(ObjectHighlightColor.None);
+                    this.appliedOutlines.Remove(pc.GameObjectId);
+                }
+            }
+
+            // 忘记已离场的对象（其 Highlight 会随对象销毁自动消失，无需再调用）
+            foreach (var id in this.appliedOutlines.Keys.ToList())
+            {
+                if (!present.Contains(id)) this.appliedOutlines.Remove(id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Service.Log.Debug(ex, "[NEVERMOVE] 描边光效应用失败（可忽略）");
+        }
+    }
+
+    private byte OutlineColorFor(TargetKind kind) => kind switch
+    {
+        TargetKind.Friend => this.config.OutlineColorFriend,
+        TargetKind.Party => this.config.OutlineColorParty,
+        TargetKind.FreeCompany => this.config.OutlineColorFreeCompany,
+        _ => this.config.OutlineColorFriend,
+    };
+
+    /// <summary>清除所有已施加的描边（关闭插件 / 切换场景 / 卸载时调用）。</summary>
+    private unsafe void ClearApplied()
+    {
+        foreach (var id in this.appliedOutlines.Keys.ToList())
+        {
+            var obj = this.FindObject(id);
+            if (obj != null)
+            {
+                try { ((GameObject*)obj.Address)->Highlight(ObjectHighlightColor.None); } catch { }
+            }
+        }
+
+        this.appliedOutlines.Clear();
+    }
+
+    private IPlayerCharacter? FindObject(ulong id)
+    {
+        foreach (var obj in Service.ObjectTable)
+        {
+            if (obj is IPlayerCharacter pc && pc.GameObjectId == id) return pc;
+        }
+
+        return null;
+    }
+
+    public void Dispose()
+    {
+        this.ClearApplied();
+        this.targets.Clear();
+    }
 }

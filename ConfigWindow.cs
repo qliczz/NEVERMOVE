@@ -37,6 +37,8 @@ public sealed class ConfigWindow : Window
                 if (ImGui.Checkbox("小地图高亮", ref minimap)) c.EnableMiniMapOverlay = minimap;
                 var areamap = c.EnableAreaMapOverlay;
                 if (ImGui.Checkbox("大地图高亮", ref areamap)) c.EnableAreaMapOverlay = areamap;
+                var onlyOpen = c.OnlyOpenWorld;
+                if (ImGui.Checkbox("仅大世界启用（副本/地牢/绝境战/团队/危命不启用）", ref onlyOpen)) c.OnlyOpenWorld = onlyOpen;
                 ImGui.Separator();
                 ImGui.TextWrapped("提示：只有与你在同一场景的对象才会被高亮。");
                 ImGui.EndTabItem();
@@ -109,6 +111,23 @@ public sealed class ConfigWindow : Window
                 if (ImGui.Checkbox("翻转 X 方向", ref fx)) c.AreaMapFlipX = fx;
                 var fy = c.AreaMapFlipY;
                 if (ImGui.Checkbox("翻转 Y 方向", ref fy)) c.AreaMapFlipY = fy;
+                ImGui.EndTabItem();
+            }
+
+            if (ImGui.BeginTabItem("描边光效"))
+            {
+                var en = c.EnableOutline;
+                if (ImGui.Checkbox("启用模型描边光效（原生轮廓）", ref en)) c.EnableOutline = en;
+                ImGui.TextWrapped("复用游戏原生「选中目标」的轮廓光效，叠加在角色模型上，与脚下彩色光圈互不冲突。");
+                ImGui.Separator();
+                var names = new[] { "关", "红", "绿", "蓝", "黄", "橙", "品红", "黑" };
+                int of = c.OutlineColorFriend;
+                if (ImGui.Combo("好友描边色", ref of, names, names.Length)) c.OutlineColorFriend = (byte)of;
+                int op = c.OutlineColorParty;
+                if (ImGui.Combo("队友描边色", ref op, names, names.Length)) c.OutlineColorParty = (byte)op;
+                int ofc = c.OutlineColorFreeCompany;
+                if (ImGui.Combo("部队描边色", ref ofc, names, names.Length)) c.OutlineColorFreeCompany = (byte)ofc;
+                ImGui.TextWrapped("注：原生描边颜色为游戏内置的 7 种预设，无法选任意 RGB；若需任意颜色，可用「游戏画面」里的彩色光圈/名字（已支持自定义 RGB）。");
                 ImGui.EndTabItem();
             }
 

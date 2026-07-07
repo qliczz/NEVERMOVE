@@ -55,6 +55,18 @@ public class Configuration : IPluginConfiguration
     public bool AreaMapFlipX { get; set; } = false;     // X 方向是否翻转
     public bool AreaMapFlipY { get; set; } = true;      // Y 方向是否翻转（默认 true：北在上）
 
+    // ===== 区域限制 =====
+    // 仅在大世界（开放地图）启用；副本 / 地牢 / 绝境战 / 团队(Raid) / 危命任务(FATE) 等场景不启用。
+    public bool OnlyOpenWorld { get; set; } = true;
+
+    // ===== 原生描边光效（世界画面）=====
+    // 复用游戏原生「选中目标」的轮廓光效（GameObject.Highlight），与脚下的彩色光圈互不冲突。
+    // 颜色为游戏内置的 7 种预设（非任意 RGB）：0=关 1=红 2=绿 3=蓝 4=黄 5=橙 6=品红 7=黑。
+    public bool EnableOutline { get; set; } = true;
+    public byte OutlineColorFriend { get; set; } = 4;      // 黄
+    public byte OutlineColorParty { get; set; } = 3;       // 蓝
+    public byte OutlineColorFreeCompany { get; set; } = 2; // 绿
+
     [NonSerialized] private IDalamudPluginInterface? pluginInterface;
 
     public void Initialize(IDalamudPluginInterface pi)
