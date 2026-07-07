@@ -1,0 +1,22 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <DalamudApiLevel>15</DalamudApiLevel>
+    <AssemblyName>NEVERMOVE</AssemblyName>
+    <RootNamespace>NEVERMOVE</RootNamespace>
+    <!-- AssemblyVersion 用插件自身语义版本（与 DalamudApiLevel 分开）；更新检测以此为准 -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Version>1.0.0.0</Version>
+    <Description>在 小地图 / 大地图 / 游戏画面 中突出显示在线好友/队友/部队成员，人多也不迷路。</Description>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- CA1416: Dalamud API 仅 Windows 受支持；本插件只跑 Windows 客户端，屏蔽该噪声警告 -->
+    <NoWarn>CA1416</NoWarn>
+    <!-- 引用解析：本机优先用已装的 Hooks 目录；CI 下该路径不存在时，
+         本行 Condition 为假、不覆盖，SDK 会自动改用 DALAMUD_HOME 环境变量（由 build.cmd / workflow 设置）。 -->
+    <DalamudLibPath Condition="Exists('C:\Users\Administrator\AppData\Roaming\XIVLauncherCN\addon\Hooks\26-06-27-01\Dalamud.dll')">C:\Users\Administrator\AppData\Roaming\XIVLauncherCN\addon\Hooks\26-06-27-01\</DalamudLibPath>
+    <AssemblySearchPaths>$(DalamudLibPath);$(AssemblySearchPaths)</AssemblySearchPaths>
+  </PropertyGroup>
+</Project>
