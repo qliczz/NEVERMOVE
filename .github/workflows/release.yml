@@ -46,12 +46,12 @@ jobs:
           "DALAMUD_HOME=$lib\" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
 
       - name: Build & Pack
-        run: dotnet build NEVERMOVE/NEVERMOVE.csproj -c Release
+        run: dotnet build NEVERMOVE.csproj -c Release
 
       - name: Prepare Release Assets
         shell: pwsh
         run: |
-          Copy-Item "NEVERMOVE/bin/Release/NEVERMOVE/latest.zip" -Destination "NEVERMOVE.zip" -Force
+          Copy-Item "bin/Release/NEVERMOVE/latest.zip" -Destination "NEVERMOVE.zip" -Force
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
@@ -61,6 +61,6 @@ jobs:
           generate_release_notes: true
           files: |
             NEVERMOVE.zip
-            NEVERMOVE/pluginmaster.json
+            pluginmaster.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
