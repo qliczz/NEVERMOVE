@@ -59,6 +59,12 @@ public class Configuration : IPluginConfiguration
     // 仅在大世界（开放地图）启用；副本 / 地牢 / 绝境战 / 团队(Raid) / 危命任务(FATE) 等场景不启用。
     public bool OnlyOpenWorld { get; set; } = true;
 
+    // ===== 好友列表位置覆盖 =====
+    // 在原生「社交 → 好友」列表每行右侧实时覆盖位置信息（自动随好友状态刷新）。
+    public bool EnableFriendListOverlay { get; set; } = true;
+    public bool FriendListShowCoords { get; set; } = true;   // 同图且已加载时显示精确坐标+距离
+    public bool FriendListShowOffline { get; set; } = false; // 离线好友是否标出（灰色）
+
     // ===== 原生描边光效（世界画面）=====
     // 复用游戏原生「选中目标」的轮廓光效（GameObject.Highlight），与脚下的彩色光圈互不冲突。
     // 颜色为游戏内置的 7 种预设（非任意 RGB）：0=关 1=红 2=绿 3=蓝 4=黄 5=橙 6=品红 7=黑。

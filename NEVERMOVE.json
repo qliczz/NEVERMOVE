@@ -1,8 +1,8 @@
 {
   "Author": "斯温",
-  "Name": "NEVERMOVE",
-  "Punchline": "在小地图 / 大地图 / 游戏画面中突出显示好友、队友与部队成员",
-  "Description": "人多/同屏拥挤时也能快速找到好友。小地图像素级对齐、大地图相对/像素双模式、世界画面脚下光圈+头顶名字。支持好友/队友/部队三类高亮，可分别开关与配色。纯可视化，无游戏签名依赖。",
+  "Name": "W.T.H.F.",
+  "Punchline": "Where the hell is my friend?",
+  "Description": "找找好友究竟在哪",
   "ApplicableVersion": "any",
   "Tags": ["Friend", "Free Company", "Party", "Minimap", "Find"]
 }

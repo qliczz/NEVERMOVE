@@ -5,13 +5,13 @@ using Dalamud.Bindings.ImGui;
 namespace NEVERMOVE;
 
 /// <summary>
-/// NEVERMOVE 设置窗口，用 /nevermove 或 /nm 打开，也会在 Dalamud 插件列表的齿轮里打开。
+/// W.T.H.F. 设置窗口，用 /nevermove 或 /nm 打开，也会在 Dalamud 插件列表的齿轮里打开。
 /// </summary>
 public sealed class ConfigWindow : Window
 {
     private readonly Configuration config;
 
-    public ConfigWindow(Configuration config) : base("NEVERMOVE 设置##config")
+    public ConfigWindow(Configuration config) : base("W.T.H.F. 设置##config")
     {
         this.config = config;
         this.SizeConstraints = new WindowSizeConstraints
@@ -39,6 +39,8 @@ public sealed class ConfigWindow : Window
                 if (ImGui.Checkbox("大地图高亮", ref areamap)) c.EnableAreaMapOverlay = areamap;
                 var onlyOpen = c.OnlyOpenWorld;
                 if (ImGui.Checkbox("仅大世界启用（副本/地牢/绝境战/团队/危命不启用）", ref onlyOpen)) c.OnlyOpenWorld = onlyOpen;
+                var fl = c.EnableFriendListOverlay;
+                if (ImGui.Checkbox("好友列表位置覆盖（在原生好友列表每行显示位置）", ref fl)) c.EnableFriendListOverlay = fl;
                 ImGui.Separator();
                 ImGui.TextWrapped("提示：只有与你在同一场景的对象才会被高亮。");
                 ImGui.EndTabItem();
@@ -128,6 +130,21 @@ public sealed class ConfigWindow : Window
                 int ofc = c.OutlineColorFreeCompany;
                 if (ImGui.Combo("部队描边色", ref ofc, names, names.Length)) c.OutlineColorFreeCompany = (byte)ofc;
                 ImGui.TextWrapped("注：原生描边颜色为游戏内置的 7 种预设，无法选任意 RGB；若需任意颜色，可用「游戏画面」里的彩色光圈/名字（已支持自定义 RGB）。");
+                ImGui.EndTabItem();
+            }
+
+            if (ImGui.BeginTabItem("好友列表"))
+            {
+                var fl = c.EnableFriendListOverlay;
+                if (ImGui.Checkbox("启用好友列表位置覆盖", ref fl)) c.EnableFriendListOverlay = fl;
+                ImGui.TextWrapped("在游戏内「社交 → 好友」原生列表的每一行右侧，实时覆盖该好友的位置信息。");
+                ImGui.Separator();
+                var sc = c.FriendListShowCoords;
+                if (ImGui.Checkbox("同图时显示精确坐标与距离", ref sc)) c.FriendListShowCoords = sc;
+                var so = c.FriendListShowOffline;
+                if (ImGui.Checkbox("离线好友也标出（灰色）", ref so)) c.FriendListShowOffline = so;
+                ImGui.Separator();
+                ImGui.TextWrapped("位置分级：①同图→绿色坐标/距离；②同服异地→黄色地图名；③跨服同大区→橙色服务器名；④跨大区→红色服务器名。\n注：仅已加载（同屏渲染）的好友才能拿到精确坐标；跨服/跨大区只能拿到服务器名。");
                 ImGui.EndTabItem();
             }
 
