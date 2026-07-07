@@ -49,7 +49,7 @@ public class Configuration : IPluginConfiguration
 
     // 像素级对齐（实验性）：用 MapUtil.GetMapCoordinates 投影到大地图矩形。
     // 失败或关闭时自动回退到「相对玩家」稳健模式。地图归一化范围因版本略有差异，可用下方三项校准。
-    public bool AreaMapPixelPerfect { get; set; } = false;
+    public bool AreaMapPixelPerfect { get; set; } = true;
     // 以下三个为校准参数：若像素级对齐出现偏移/方向相反，在游戏内调这三项即可。
     public float AreaMapScaleFactor { get; set; } = 1f; // 整体缩放倍率（默认 1，可微调大小）
     public bool AreaMapFlipX { get; set; } = false;     // X 方向是否翻转

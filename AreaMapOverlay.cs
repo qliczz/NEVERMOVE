@@ -56,16 +56,17 @@ public sealed class AreaMapOverlay
         this.DrawRelative(addon, local);
     }
 
-    /// <summary>像素级对齐绘制（实验性）。成功返回 true，任何前置条件不满足返回 false。</summary>
+    /// <summary>像素级对齐绘制（跟随大地图缩放）。成功返回 true，任何前置条件不满足返回 false。</summary>
     private unsafe bool DrawPixelPerfect(AtkUnitBase* addon, IPlayerCharacter local)
     {
         var am = (Atk2DAreaMap*)addon;
         var root = addon->RootNode;
         if (root == null) return false;
 
-        var scale = root->ScaleX;
+        // AtkUnitBase 无 Width/Height，尺寸取自根节点（AtkResNode）。
         var ax = addon->X;
         var ay = addon->Y;
+        var scale = root->ScaleX;
         var aw = root->Width * scale;
         var ah = root->Height * scale;
 
@@ -83,11 +84,15 @@ public sealed class AreaMapOverlay
         var fx = this.config.AreaMapFlipX ? -1f : 1f;
         var fy = this.config.AreaMapFlipY ? -1f : 1f;
 
-        // 当前大地图缩放倍率（Atk2DAreaMap.MapScale）。缩放后落点必须按此倍率放大，
-        // 否则圆点不会随地图缩放移动而失准。
-        var mapScale = Math.Max(0.01f, am->MapScale);
+        // 单一缩放因子（关键修复点）：
+        //   - 若 addon 窗口本身随缩放整体放大/缩小（root->ScaleX 偏离 1），则渲染尺寸 aw/ah 已包含缩放，
+        //     此时 zoom 取 1（避免再乘 MapScale 造成双重放大）；
+        //   - 否则（窗口固定、地图内容缩放）缩放体现在 Atk2DAreaMap.MapScale 里，zoom 取 MapScale。
+        float zoom = 1f;
+        if (Math.Abs(root->ScaleX - 1f) <= 0.001f)
+            zoom = am->MapScale;
 
-        // 以玩家地图坐标为视图中心，用「相对偏移 × 缩放」投影，保证缩放/平移时与地图一致。
+        // 以玩家为视图中心：归一化地图坐标差 × 半宽 × 缩放倍率。
         var playerMc = MapUtil.GetMapCoordinates(local, false);
 
         var draw = ImGui.GetForegroundDrawList();
@@ -100,8 +105,8 @@ public sealed class AreaMapOverlay
 
             // 归一化地图坐标：X 东/西，Y 北/南
             var mc = MapUtil.GetMapCoordinates(pc, false);
-            var sx = cx + ((mc.X - playerMc.X) * halfW * mapScale * sf * fx);
-            var sy = cy - ((mc.Y - playerMc.Y) * halfH * mapScale * sf * fy); // 北在上 => 屏幕 Y 取负
+            var sx = cx + ((mc.X - playerMc.X) * halfW * zoom * sf * fx);
+            var sy = cy - ((mc.Y - playerMc.Y) * halfH * zoom * sf * fy); // 北在上 => 屏幕 Y 取负
 
             var color = WorldOverlay.ToAbgr(this.ColorFor(kind));
             draw.AddCircleFilled(new Vector2(sx, sy), this.config.AreaMapDotRadius, color);

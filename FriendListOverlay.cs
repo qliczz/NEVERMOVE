@@ -79,6 +79,13 @@ public sealed class FriendListOverlay
             rendered = new Dictionary<ulong, Vector3>();
         }
 
+        // 好友列表 addon 屏幕原点 + 主视口偏移（多屏修正）。原生节点坐标必须换算到屏幕空间才画得对。
+        var viewport = ImGui.GetWindowViewport();
+        var vpX = viewport.Pos.X;
+        var vpY = viewport.Pos.Y;
+        var addonX = addon->X;
+        var addonY = addon->Y;
+
         var draw = ImGui.GetForegroundDrawList();
         var itemCount = list->GetItemCount();
         for (var i = 0; i < itemCount; i++)
@@ -89,13 +96,14 @@ public sealed class FriendListOverlay
             if (dataIndex < 0 || dataIndex >= entryCount) continue;
 
             var data = proxy->CharDataSpan[dataIndex];
-            var node = renderer->RowTemplateNode;
+            // 行节点用 AtkComponentBase.OwnerNode（无论 RowTemplateNodeCount 是否为 1 都有效）。
+            var node = (AtkResNode*)((AtkComponentBase*)renderer)->OwnerNode;
             if (node == null) continue;
 
             var tag = BuildTag(data, localTerritory, localWorld, localDC, localPos, rendered);
             if (tag.Text == null) continue;
 
-            var pos = GetNodePosition(node);
+            var pos = GetNodePosition(node, addonX, addonY, vpX, vpY);
             var rightX = pos.X + node->Width - 6f;
             var y = pos.Y + 3f;
 
@@ -164,18 +172,22 @@ public sealed class FriendListOverlay
         return ($"跨大区 {label}", WorldOverlay.ToAbgr(new Vector4(1f, 0.27f, 0.27f, 1f)));
     }
 
-    // ===== 原生节点屏幕坐标（沿父链累加 X/Y）=====
-    private static unsafe Vector2 GetNodePosition(AtkResNode* node)
+    // ===== 原生节点 -> 屏幕坐标（沿父链累加 X/Y，并乘父级 ScaleX/Y，最后加 addon 屏幕原点 + 视口偏移）=====
+    private static unsafe Vector2 GetNodePosition(AtkResNode* node, float addonX, float addonY, float vpX, float vpY)
     {
-        var pos = new Vector2(node->X, node->Y);
+        float x = node->X;
+        float y = node->Y;
         var parent = node->ParentNode;
         while (parent != null)
         {
-            pos += new Vector2(parent->X, parent->Y);
+            // 父节点对其子节点应用 ScaleX/ScaleY，故子节点坐标要先乘父级缩放再加父节点位置。
+            x = parent->X + (x * parent->ScaleX);
+            y = parent->Y + (y * parent->ScaleY);
             parent = parent->ParentNode;
         }
 
-        return pos;
+        // 累加到的坐标是相对 addon 根节点（其屏幕原点即 addon->X/Y）；再加主视口偏移得到最终屏幕坐标。
+        return new Vector2(addonX + vpX + x, addonY + vpY + y);
     }
 
     // ===== Lumina 查表（运行时反射，兼容未预编译 GeneratedSheets 的 CN 构建）=====
