@@ -22,15 +22,25 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Download Dalamud (编译引用源)
+      - name: Download Dalamud (编译引用源，自托管)
         shell: pwsh
         run: |
-          # XIVLauncherCN 使用的 Dalamud 与国际服同源（goatcorp/Dalamud），
-          # API Level 15 一致；这里取最新 Dalamud 发行包作为编译引用。
+          # goatcorp/Dalamud 的 "latest" Release 已不再提供 Dalamud.zip 资源，
+          # 故改为下载本仓库自托管的、与 XIVLauncherCN Hooks 完全一致的 Dalamud 引用程序集包
+          # （仅含编译所需的 .dll，已在本地验证可零错误编译）。
+          # 该资源为公开 Release 资产，无需鉴权即可下载。
           $lib = "$PWD/lib"
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/goatcorp/Dalamud/releases/latest"
-          $asset = $release.assets | Where-Object { $_.name -eq 'Dalamud.zip' }
-          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "$PWD/dalamud.zip"
+          $url = "https://github.com/qliczz/NEVERMOVE/releases/download/ci-deps/Dalamud.zip"
+          $max = 3
+          for ($i = 1; $i -le $max; $i++) {
+            try {
+              Invoke-WebRequest -Uri $url -OutFile "$PWD/dalamud.zip" -ErrorAction Stop
+              break
+            } catch {
+              if ($i -eq $max) { throw }
+              Start-Sleep -Seconds 5
+            }
+          }
           Expand-Archive -Path "$PWD/dalamud.zip" -DestinationPath $lib -Force
           # DALAMUD_HOME 结尾必须带反斜杠（SDK 拼 HintPath 用）
           "DALAMUD_HOME=$lib\" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
