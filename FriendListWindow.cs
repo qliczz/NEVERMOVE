@@ -80,7 +80,7 @@ public sealed class FriendListWindow : Window
 
         var proxy = (InfoProxyCommonList*)info;
         // 防御：即使是已登录状态，也限制遍历上限，避免任何异常数据导致卡死。
-        var entryCount = Math.Min(proxy->EntryCount, 2000u);
+        var entryCount = Math.Min(proxy->EntryCount, 500u);
         if (entryCount == 0)
         {
             ImGui.TextUnformatted("（没有好友，或好友列表尚未加载）");

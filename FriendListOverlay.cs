@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
@@ -29,6 +30,10 @@ namespace NEVERMOVE;
 /// </summary>
 public static class FriendListOverlay
 {
+    private static readonly ConcurrentDictionary<ushort, string> ZoneNames = new();
+    private static readonly ConcurrentDictionary<ushort, string> WorldNames = new();
+    private static readonly ConcurrentDictionary<ushort, uint> DataCenters = new();
+
     /// <summary>
     /// 为单个好友生成位置标签（文本 + ImGui 颜色 0xAABBGGRR）。无内容时 Text 为 null。
     /// </summary>
@@ -91,35 +96,44 @@ public static class FriendListOverlay
     }
 
     internal static string? GetZoneName(ushort zoneId)
+        => ZoneNames.GetOrAdd(zoneId, LookupZoneName);
+
+    private static string LookupZoneName(ushort zoneId)
     {
         try
         {
             var row = Sheets.GetRow("TerritoryType", zoneId);
-            if (row == null) return null;
+            if (row == null) return $"地图#{zoneId}";
             var placeName = Sheets.GetRefValue(row, "PlaceName");
             return Sheets.GetStringProp(placeName, "Name") ?? $"地图#{zoneId}";
         }
         catch
         {
-            return null;
+            return $"地图#{zoneId}";
         }
     }
 
     internal static string? GetWorldName(ushort worldId)
+        => WorldNames.GetOrAdd(worldId, LookupWorldName);
+
+    private static string LookupWorldName(ushort worldId)
     {
         try
         {
             var row = Sheets.GetRow("World", worldId);
-            if (row == null) return null;
+            if (row == null) return $"服务器#{worldId}";
             return Sheets.GetStringProp(row, "Name") ?? $"服务器#{worldId}";
         }
         catch
         {
-            return null;
+            return $"服务器#{worldId}";
         }
     }
 
     internal static uint GetDataCenter(ushort worldId)
+        => DataCenters.GetOrAdd(worldId, LookupDataCenter);
+
+    private static uint LookupDataCenter(ushort worldId)
     {
         try
         {
@@ -201,7 +215,9 @@ public static class FriendListOverlay
         {
             if (obj == null) return null;
             var p = obj.GetType().GetProperty(propName);
-            return p?.GetValue(obj) as string;
+            var value = p?.GetValue(obj);
+            var text = value?.ToString();
+            return string.IsNullOrWhiteSpace(text) ? null : text;
         }
 
         public static uint GetUIntProp(object? obj, string propName)
