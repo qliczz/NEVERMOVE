@@ -40,7 +40,7 @@ public sealed class ConfigWindow : Window
                 var onlyOpen = c.OnlyOpenWorld;
                 if (ImGui.Checkbox("仅大世界启用（副本/地牢/绝境战/团队/危命不启用）", ref onlyOpen)) c.OnlyOpenWorld = onlyOpen;
                 var fl = c.EnableFriendListOverlay;
-                if (ImGui.Checkbox("好友列表位置覆盖（在原生好友列表每行显示位置）", ref fl)) c.EnableFriendListOverlay = fl;
+                if (ImGui.Checkbox("好友位置面板（独立窗口，列出好友位置）", ref fl)) c.EnableFriendListOverlay = fl;
                 ImGui.Separator();
                 ImGui.TextWrapped("提示：只有与你在同一场景的对象才会被高亮。");
                 ImGui.EndTabItem();
@@ -136,15 +136,15 @@ public sealed class ConfigWindow : Window
             if (ImGui.BeginTabItem("好友列表"))
             {
                 var fl = c.EnableFriendListOverlay;
-                if (ImGui.Checkbox("启用好友列表位置覆盖", ref fl)) c.EnableFriendListOverlay = fl;
-                ImGui.TextWrapped("在游戏内「社交 → 好友」原生列表的每一行右侧，实时覆盖该好友的位置信息。");
+                if (ImGui.Checkbox("启用好友位置面板", ref fl)) c.EnableFriendListOverlay = fl;
+                ImGui.TextWrapped("以独立 ImGui 窗口列出每位好友的在线状态与位置（同图坐标/距离、地图名、服务器名/大区），稳定可靠。用 /nevermove 或插件齿轮打开。");
                 ImGui.Separator();
                 var sc = c.FriendListShowCoords;
                 if (ImGui.Checkbox("同图时显示精确坐标与距离", ref sc)) c.FriendListShowCoords = sc;
                 var so = c.FriendListShowOffline;
-                if (ImGui.Checkbox("离线好友也标出（灰色）", ref so)) c.FriendListShowOffline = so;
+                if (ImGui.Checkbox("离线好友也列出（灰色）", ref so)) c.FriendListShowOffline = so;
                 ImGui.Separator();
-                ImGui.TextWrapped("位置分级：①同图→绿色坐标/距离；②同服异地→黄色地图名；③跨服同大区→橙色服务器名；④跨大区→红色服务器名。\n注：仅已加载（同屏渲染）的好友才能拿到精确坐标；跨服/跨大区只能拿到服务器名。");
+                ImGui.TextWrapped("位置分级：①同图→绿色坐标/距离；②同服异地→黄色地图名；③跨服同大区→橙色服务器名；④跨大区→红色服务器名。\n注：仅已加载（同屏渲染）的好友才能拿到精确坐标；跨服/跨大区只能拿到服务器名。\n（原「在原生好友列表每行右侧覆盖文字」的方案因依赖原生节点坐标、极不稳定，已弃用。）");
                 ImGui.EndTabItem();
             }
 
