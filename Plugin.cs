@@ -20,11 +20,15 @@ public sealed class Plugin : IDalamudPlugin
     private readonly Configuration configuration;
     private readonly WindowSystem windowSystem;
     private readonly ConfigWindow configWindow;
+
+    // 防止启动/读条阶段就打开好友面板并读取未初始化的好友代理(导致 EntryCount 为垃圾值、
+    // for 循环海量迭代卡死游戏)：窗口不立即打开，等登录完成后再恢复。
+    private bool autoOpenDone;
     private readonly TargetTracker targetTracker;
     private readonly WorldOverlay worldOverlay;
     private readonly MiniMapOverlay miniMapOverlay;
     private readonly AreaMapOverlay areaMapOverlay;
-    private readonly FriendListOverlay friendListOverlay;
+    private readonly FriendListWindow friendListWindow;
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -38,11 +42,12 @@ public sealed class Plugin : IDalamudPlugin
         this.worldOverlay = new WorldOverlay(this.configuration, this.targetTracker);
         this.miniMapOverlay = new MiniMapOverlay(this.configuration, this.targetTracker);
         this.areaMapOverlay = new AreaMapOverlay(this.configuration, this.targetTracker);
-        this.friendListOverlay = new FriendListOverlay(this.configuration);
+        this.friendListWindow = new FriendListWindow(this.configuration);
 
         this.configWindow = new ConfigWindow(this.configuration);
         this.windowSystem = new WindowSystem("W.T.H.F.");
         this.windowSystem.AddWindow(this.configWindow);
+        this.windowSystem.AddWindow(this.friendListWindow);
 
         pluginInterface.UiBuilder.Draw += this.OnDraw;
         pluginInterface.UiBuilder.OpenConfigUi += this.OpenConfigUi;
@@ -51,6 +56,7 @@ public sealed class Plugin : IDalamudPlugin
         Service.CommandManager.AddHandler(CommandAlias, new CommandInfo(this.OnCommand) { HelpMessage = "打开 W.T.H.F. 设置界面" });
 
         Service.Framework.Update += this.FrameworkOnUpdate;
+        Service.ClientState.Login += this.OnClientLogin;
 
         Service.Log.Information("[W.T.H.F.] 已加载");
     }
@@ -59,16 +65,57 @@ public sealed class Plugin : IDalamudPlugin
     {
         this.targetTracker.Update();
         this.targetTracker.ApplyOutlines();
+
+        // 插件在已进入游戏时被加载(如 /xlplugins 重载)，Login 事件不会再触发，
+        // 因此在这里等游戏就绪后一次性恢复好友面板开关。
+        if (!this.autoOpenDone && Service.ClientState.IsLoggedIn)
+        {
+            this.autoOpenDone = true;
+            if (this.configuration.EnableFriendListOverlay)
+                this.friendListWindow.IsOpen = true;
+        }
+    }
+
+    private void OnClientLogin()
+    {
+        // 游戏登录完成后再打开好友面板，避免在启动/读条阶段读取未初始化的好友代理而卡死游戏。
+        this.autoOpenDone = true;
+        if (this.configuration.EnableFriendListOverlay)
+            this.friendListWindow.IsOpen = true;
     }
 
     private void OnDraw()
     {
         this.windowSystem.Draw();
 
-        if (this.configuration.EnableWorldOverlay) this.worldOverlay.Draw();
-        if (this.configuration.EnableMiniMapOverlay) this.miniMapOverlay.Draw();
-        if (this.configuration.EnableAreaMapOverlay) this.areaMapOverlay.Draw();
-        if (this.configuration.EnableFriendListOverlay) this.friendListOverlay.Draw();
+        // 每个覆盖独立 try/catch：任一覆盖绘制异常都只影响自己，不会连累其余覆盖（
+        // 例如早先的覆盖若抛异常，排在后面的好友列表覆盖仍应照常工作）。
+        this.SafeDraw(this.configuration.EnableWorldOverlay, this.worldOverlay.Draw, "世界");
+        this.SafeDraw(this.configuration.EnableMiniMapOverlay, this.miniMapOverlay.Draw, "小地图");
+        this.SafeDraw(this.configuration.EnableAreaMapOverlay, this.areaMapOverlay.Draw, "大地图");
+        // 好友位置信息改由独立 ImGui 窗口(FriendListWindow)呈现，已加入 WindowSystem，
+        // 由 windowSystem.Draw() 统一绘制；不再在原生好友列表上做脆弱的坐标覆盖。
+    }
+
+    private static bool[] overlayErrored = new bool[4];
+
+    private void SafeDraw(bool enabled, Action draw, string name)
+    {
+        if (!enabled) return;
+        try
+        {
+            draw();
+        }
+        catch (Exception ex)
+        {
+            // 每种覆盖只报一次，避免刷屏。
+            int idx = name == "世界" ? 0 : name == "小地图" ? 1 : name == "大地图" ? 2 : 3;
+            if (!overlayErrored[idx])
+            {
+                overlayErrored[idx] = true;
+                Service.Log.Error(ex, $"[W.T.H.F.] {name}覆盖绘制异常（已隔离，不影响其它覆盖）");
+            }
+        }
     }
 
     private void OnCommand(string command, string args) => this.configWindow.IsOpen = true;
@@ -78,6 +125,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         Service.Framework.Update -= this.FrameworkOnUpdate;
+        Service.ClientState.Login -= this.OnClientLogin;
         Service.PluginInterface.UiBuilder.OpenConfigUi -= this.OpenConfigUi;
         Service.PluginInterface.UiBuilder.Draw -= this.OnDraw;
         Service.CommandManager.RemoveHandler(CommandName);
