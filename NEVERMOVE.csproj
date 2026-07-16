@@ -5,8 +5,8 @@
     <AssemblyName>NEVERMOVE</AssemblyName>
     <RootNamespace>NEVERMOVE</RootNamespace>
     <!-- AssemblyVersion 用插件自身语义版本（与 DalamudApiLevel 分开）；更新检测以此为准 -->
-    <AssemblyVersion>1.0.3.0</AssemblyVersion>
-    <Version>1.0.3.0</Version>
+    <AssemblyVersion>1.0.5.1</AssemblyVersion>
+    <Version>1.0.5.1</Version>
     <Description>W.T.H.F. —— 找找好友究竟在哪：小地图/大地图/游戏画面/原生好友列表高亮好友位置，原生描边光效，区域限制。</Description>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
