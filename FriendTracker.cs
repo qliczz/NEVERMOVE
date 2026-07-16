@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Game.ClientState.Conditions;
@@ -32,7 +31,7 @@ public sealed class TargetTracker : IDisposable
     }
 
     private readonly Configuration config;
-    private readonly ConcurrentDictionary<ulong, TargetKind> targets = new();
+    private volatile IReadOnlyDictionary<ulong, TargetKind> targets = new Dictionary<ulong, TargetKind>();
     private readonly Dictionary<ulong, byte> appliedOutlines = new();
     private DateTime lastScan = DateTime.MinValue;
     private string? localFcTag;
@@ -51,7 +50,7 @@ public sealed class TargetTracker : IDisposable
             var local = Service.ObjectTable.LocalPlayer;
             if (local == null)
             {
-                this.targets.Clear();
+                this.targets = new Dictionary<ulong, TargetKind>();
                 return;
             }
 
@@ -62,11 +61,11 @@ public sealed class TargetTracker : IDisposable
             // 区域限制：仅大世界启用；副本/地牢/绝境战/团队(BoundByDuty) 或 危命任务(FateId!=0) 时清空高亮目标
             if (this.config.OnlyOpenWorld && this.IsRestricted(local))
             {
-                this.targets.Clear();
+                this.targets = new Dictionary<ulong, TargetKind>();
                 return;
             }
 
-            var fresh = new ConcurrentDictionary<ulong, TargetKind>();
+            var fresh = new Dictionary<ulong, TargetKind>();
             foreach (var obj in Service.ObjectTable)
             {
                 if (obj is not IPlayerCharacter pc) continue;
@@ -76,9 +75,8 @@ public sealed class TargetTracker : IDisposable
                 if (kind != null) fresh[pc.GameObjectId] = kind.Value;
             }
 
-            // 原子替换，避免绘制线程读到半成品
-            this.targets.Clear();
-            foreach (var kv in fresh) this.targets[kv.Key] = kv.Value;
+            // 一次替换完整快照，绘制侧不会看到 Clear 与回填之间的半成品。
+            this.targets = fresh;
         }
         catch (Exception ex)
         {
@@ -227,6 +225,6 @@ public sealed class TargetTracker : IDisposable
     public void Dispose()
     {
         this.ClearApplied();
-        this.targets.Clear();
+        this.targets = new Dictionary<ulong, TargetKind>();
     }
 }
